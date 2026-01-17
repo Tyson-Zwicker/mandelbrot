@@ -2,21 +2,51 @@ let canvas = document.getElementById('canvas');
 let context = canvas.getContext('2d');
 let x = undefined;
 let y = undefined;
-const maxIterations = 1028;
+const maxIterations = 128;
 const colors = [];
 let colorOffset = 0;
 let colorCyclingOn = false;
-let timeoutInterval =10;
+let timeoutInterval = 10;
 let isDrawing = false;
 let bitmap = [];
 let startX = 0;
 let startY = 0;
 let currentA0 = -2, currentB0 = -1.5, currentA1 = 1, currentB1 = 1.5;
+let oldA0 = -2, oldB0 = -1.5, oldA1 = 1, oldB1 = 1.5;
+
+let txtCoordinates = document.getElementById('txtCoordinates');
+txtCoordinates.addEventListener('change', () => {
+  let parts = txtCoordinates.value.spit(',');
+  try {
+    let a0 = parseInt(parts[0]);
+    let b0 = parseInt(parts[1]);
+    let a1 = parseInt(parts[2]);
+    let b1 = parseInt(parts[3]);
+    oldA0 = currentA0;
+    oldB0 = currentB0;
+    oldA1 = currentA1;
+    oldB1 = currentB1;
+    currentA0 = a0;
+    currentB0 = b0;
+    currentA1 = a1;
+    currentB1 = b1;
+  } catch {
+    alert('Your coordinates suck!');
+  }
+});
+let btnBack = document.getElementById('btnBack');
+btnBack.addEventListener('click', () => {
+  currentA0 = oldA0;
+  currentB0 = oldB0;
+  currentA1 = oldA1;
+  currentB1 = oldB1;
+  drawMandelbrot(currentA0, currentB0, currentA1, currentB1);
+});
 document.addEventListener("DOMContentLoaded", function () {
   context.fillStyle = '#444444';
   context.fillRect(0, 0, canvas.width, canvas.height);
   makeColors();
-  console.log ('colors='+colors.length);
+  console.log('colors=' + colors.length);
   drawMandelbrot(currentA0, currentB0, currentA1, currentB1);
   canvas.addEventListener('mousedown', onMouseDown);
   canvas.addEventListener('mousemove', onMouseMove);
@@ -99,7 +129,10 @@ function onMouseUp(event) {
       newA0 = centerA - targetWidth / 2;
       newA1 = centerA + targetWidth / 2;
     }
-
+    oldA0 = currentA0;
+    oldB0 = currentB0;
+    oldA1 = currentA1;
+    oldB1 = currentB1;
     currentA0 = newA0;
     currentA1 = newA1;
     currentB0 = newB0;
@@ -124,6 +157,8 @@ function colorCycle() {
 }
 
 function drawMandelbrot(a0, b0, a1, b1) {
+  document.getElementById('txtCoordinates').value = `${a0},${b0},${a1},${b1}`;
+
   let sX = (a1 - a0) / canvas.width;
   let sY = (b1 - b0) / canvas.height;
   for (let x = 0; x < canvas.width; x++) {
@@ -138,15 +173,19 @@ function drawMandelbrot(a0, b0, a1, b1) {
 }
 
 function calcPixel(z, a, b, iteration) {
+  let n = 2;
   let magnitude = Math.sqrt(z.a ** 2 + z.b ** 2);
   if (magnitude <= 2) {
     if (iteration === maxIterations) {
       return iteration;
     }
-    let zsqr = { a: z.a ** 2 - z.b ** 2, b: 2 * z.a * z.b };
-    let nz = { a: zsqr.a + a, b: zsqr.b + b }
+    let zpwr = { a: z.a ** n - z.b ** n, b: 2 * z.a * z.b };
+    let nz = { a: zpwr.a + a, b: zpwr.b + b }
     return calcPixel(nz, a, b, iteration + 1);
   } else {
+    //reduce color banding..
+    let m = z.a ** 2 + z.b ** 2;
+    let r = Math.floor(iteration + 1 - Math.log(Math.log(m)) / Math.log(2));
     return iteration;
   }
 }
@@ -157,10 +196,10 @@ function render() {
       drawPixel(x, y, bitmap[x + y * canvas.width]);
     }
   }
-  let dt=Date.now()-t; 
-  
-  if (dt>timeoutInterval) {
-    timeoutInterval =dt*1.1;
+  let dt = Date.now() - t;
+
+  if (dt > timeoutInterval) {
+    timeoutInterval = dt * 1.1;
   }
 }
 function drawPixel(x, y, itr) {
